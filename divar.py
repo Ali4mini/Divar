@@ -4,56 +4,72 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.firefox.options import Options
 
+import datetime
 import pickle
 import time
 import traceback
+import logging
+
+logging.basicConfig(level=logging.INFO, filename="log.log", filemode="w", format="%(asctime)s - %(name)s - %(message)s")
+
 
 
 class Divar:
 
-    def __init__(self, URL):
+    def __init__(self, headless=True):
+        logging.info("initializing Divar object")
         self.options = Options()
-        self.options.headless = True
+        self.options.headless = headless
         self.driver = webdriver.Firefox(options=self.options)
-        self.URL = URL
         self.terms_agreement_done = False
-        self.driver.get(URL)
-        time.sleep(6)
+
 
     def __del__(self):
         self.driver.close()
         self.driver.quit()
+        #logging.warning("deleting Divar object")
+
+    def __enter__(self):
+        self.__init__()
+
+    def __exit__(self,x,x2,x3):
+        self.__del__()
 
     def login(self, phone, cookie=None):
+        self.driver.get("https://divar.ir/s/tehran")
         if cookie == None:
+
             self.driver.implicitly_wait(10)
             my_divar = self.driver.find_element(By.XPATH, "/html/body/div[1]/header/nav/div/div[3]/div/button").click()
             self.driver.implicitly_wait(5)
             login_button = self.driver.find_element(By.XPATH, "/html/body/div[1]/header/nav/div/div[3]/div/div/div/button").click()
             self.driver.implicitly_wait(10)
-            phone_input = self.driver.find_element(By.XPATH, "/html/body/div[3]/div/div/div/div/div/form/div/input").send_keys(phone)
+            time.sleep(2)
+            phone_input = self.driver.find_element(By.XPATH, "//input[@class='kt-textfield__input kt-textfield__input--empty']").send_keys(phone)
             two_FA_input = input("2FA >>> ")
-            two_FA = self.driver.find_element(By.XPATH, "/html/body/div[3]/div/div/div/div/div/form/div/input").send_keys(two_FA_input)
-            time.sleep(7)
-            notif_message = self.driver.find_element(By.XPATH, "/html/body/div[1]/div[4]/div/div/div/div[2]/button").click()
-
+            two_FA = self.driver.find_element(By.XPATH, "//input[@class='kt-textfield__input kt-textfield__input--empty']").send_keys(two_FA_input)
+            #time.sleep(4)
+            #notif_message = self.driver.find_element(By.XPATH, "/html/body/div[1]/div[4]/div/div/div/div[2]/button").click()
+            logging.warning(f"loged in with phone number: {phone}")
 
         else:
             self.load_cookie(cookie)
-            self.driver.get(self.URL)
-            time.sleep(7)
-            notif_message = self.driver.find_element(By.XPATH, "/html/body/div[1]/div[4]/div/div/div/div[2]/button").click()
-            print("we are in\n")
+            self.driver.get("https://divar.ir/s/tehran")
+            self.driver.implicitly_wait(10)
 
-    def first_post(self):
+            #notif_message = self.driver.find_element(By.XPATH, "/html/body/div[1]/div[4]/div/div/div/div[2]/button").click()
+
+    def first_post(self,page):
+        self.driver.get(page)
         first = self.driver.find_element(By.XPATH, "/html/body/div[1]/div[1]/main/div[2]/div/div/div[1]/a")
         return first.get_attribute("href")
+        logging.info(f"returned first post of page: {page}")
 
-    def all_posts(self):
-        time.sleep(7)
-
-
+    def all_posts(self,page):
+        self.driver.get(page)
+        time.sleep(5)
         posts = self.driver.find_elements(By.XPATH, "//a[@class='']")
+        logging.info(f"found all post of page: {page}")
         all_posts_links = []
         for i in posts:
             all_posts_links.append(i.get_attribute("href"))
@@ -62,153 +78,86 @@ class Divar:
         return all_posts_links
 
 
-    def post_details(self, post, type):
-        details = []
+    def post_details(self, post):
+        logging.info(f"extracting data from '{post}'")
         self.driver.get(post)
         phone_button = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div[1]/div[1]/div[2]/button[1]").click()
         time.sleep(3)
+        logging.warning(f"terms of agreements: {self.terms_agreement_done}")
         if self.terms_agreement_done == False:
-            agree_button = self.driver.find_element(By.XPATH, "/html/body/div[2]/div/div/div/footer/button[2]").click()
-            self.terms_agreement_done = True
+            try:
+                agree_button = self.driver.find_element(By.XPATH, "/html/body/div[2]/div/div/div/footer/button[2]").click()
+                self.terms_agreement_done = True
+            except:
+                pass
 
-        def sell():
-            try:
-                title = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div[1]/div[1]/div[1]/div/div[1]").text
-            except:
-                title = None
-            try:
-                year = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div/div[1]/div[4]/div[1]/div[2]/span[2]").text
-            except:
-                year = None
-            try:
-                room = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div/div[1]/div[4]/div[1]/div[3]/span[2]").text
-            except:
-                room = None
-            try:
-                m2 = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div/div[1]/div[4]/div[1]/div[1]/span[2]").text
-            except:
-                m2 = None
-            try:
-                price = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div/div[1]/div[4]/div[2]/div[2]/p").text
-                #price = price.replace("تومان","")
-                #price = price.replace("٬","")
-                #price = price.replace(" ","")
-            except:
-                price = None
-            try:
-                m2_price = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div/div[1]/div[4]/div[3]/div[2]/p").text
-                #m2_price = price.replace("تومان","")
-                #m2_price = price.replace("٬","")
-                #m2_price = price.replace(" ","")
-            except:
-                m2_price = None
-            try:
-                floor_number = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div/div[1]/div[4]/div[5]/div[2]/p").text
-            except:
-                floor_number = None
-            try:
-                elevator = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div/div[1]/div[4]/div[7]/div[1]/span").text
-            except:
-                elevator = None
-            try:
-                warehouse = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div[1]/div[1]/div[4]/div[7]/div[3]/span").text
-            except:
-                warehouse = None
-            try:
-                parking = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div[1]/div[1]/div[4]/div[7]/div[2]/span").text
-            except:
-                parking = None
-            try:
+        # finding a post's category and sub categorys
+        category_e = self.driver.find_elements(By.CLASS_NAME, "kt-breadcrumbs__link")
+        category = [element.text for element in category_e]
+        logging.info("extracted category")
+        main_category = category[-1]
+        name = category[0]
+        # extracting data from post
+        group_row_title = self.driver.find_elements(By.XPATH, "//span[@class='kt-group-row-item__title kt-body kt-body--sm']")
+        group_row_value = self.driver.find_elements(By.XPATH, "//span[@class='kt-group-row-item__value']")
+        base_row_title = self.driver.find_elements(By.XPATH, "//p[@class='kt-base-row__title kt-unexpandable-row__title']")
+        group_row_title = [e.text for e in group_row_title]
+        group_row_value = [e.text for e in group_row_value]
+        base_row_title = [e.text for e in base_row_title]
+        logging.info("extracting group elements")
 
-                phone = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div[1]/div[1]/div[3]/div[1]/div/div[2]/a").text
-            except:
-                phone = None
+        titles = group_row_title + base_row_title
+        logging.info("merging base_row_title and group_row_title.")
+        ## data usually is in two types "link" and "paragraph"
+        try:
+            base_row_value_a_tag = self.driver.find_elements(By.XPATH, "//a[@class='kt-unexpandable-row__action kt-text-truncate']")
+            base_row_value = self.driver.find_elements(By.XPATH, "//p[@class='kt-unexpandable-row__value']")
+            base_row_value_a_tag = [e.text for e in base_row_value_a_tag]
+            base_row_value = [e.text for e in base_row_value]
+            base_row_value = base_row_value_a_tag + base_row_value
+            values = group_row_value + base_row_value
+        except:
 
+            base_row_value = self.driver.find_elements(By.XPATH, "//p[@class='kt-unexpandable-row__value']")
+            base_row_value = [e.text for e in base_row_value]
+            values = group_row_value + base_row_value
+        description = self.driver.find_element(By.XPATH, "//p[@class='kt-description-row__text kt-description-row__text--primary']").text
 
-            return [title, year, room, m2, price, m2_price, floor_number, elevator, warehouse, parking, phone, post]
+        res = dict(zip(titles,values))
+        res["شاخه"] = category
+        res["توضیحات"] = description
+        try:
+            del res["چت"]
+        except:
+            pass
+        try:
+            del res["آخرین به\u200cروزرسانی آگهی"]
+        except:
+            pass
+        return res
+        logging.warning(f"done extracting data from {post}")
 
-        def rent():
-
-            title = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div[1]/div[1]/div[1]/div/div[1]").text
-            try:
-                year = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div/div[1]/div[4]/div[1]/div[2]/span[2]").text
-            except:
-                year = None
-            try:
-                room = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div/div[1]/div[4]/div[1]/div[3]/span[2]").text
-            except:
-                room = None
-            try:
-                m2 = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div/div[1]/div[4]/div[1]/div[1]/span[2]").text
-            except:
-                m2 = None
-            try:
-                price = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div/div[1]/div[4]/div[2]/div[2]/p").text
-                price = price.replace("تومان","")
-                price = price.replace("٬","")
-                price = price.replace(" ","")
-            except:
-                price = None
-            try:
-                rent = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div/div[1]/div[4]/div[3]/div[2]/p").text
-                rent = rent.replace("تومان","")
-                rent = rent.replace("٬","")
-                rent = rent.replace(" ","")
-            except:
-                m2_price = None
-            try:
-                floor_number = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div/div[1]/div[4]/div[5]/div[2]/p").text
-            except:
-                floor_number = None
-            try:
-                elevator = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div/div[1]/div[4]/div[7]/div[1]/span").text
-            except:
-                elevator = None
-            try:
-                warehouse = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div[1]/div[1]/div[4]/div[7]/div[3]/span").text
-            except:
-                warehouse = None
-            try:
-                parking = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div[1]/div[1]/div[4]/div[7]/div[2]/span").text
-            except:
-                parking = None
-            try:
-
-                phone = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div[1]/div[1]/div[3]/div[1]/div/div[2]/a").text
-            except:
-                phone = None
-
-            res = {
-            'title':title,
-            'year':year,
-            'room':room,
-            'm2':m2,
-            'price':price,
-            'm2_price':m2_price,
-            'floor_number':floor_number,
-            'elevator':elevator,
-            'warehouse':warehouse,
-            'parking':parking,
-            'phone':phone,
-
-            }
-            return res
-
-        if type == "اچاره":
-            return rent
-        if type == "فروش":
-            return sell
 
     def save_cookie(self, path):
         time.sleep(5)
         cookie1 = self.driver.get_cookies()
         with open(path, 'wb') as filehandler:
             pickle.dump(self.driver.get_cookies(), filehandler)
-        print("\n done")
-        print(cookie1)
+        logging.warning(f"saved a cookie: {path}")
 
     def load_cookie(self, path):
          with open(path, 'rb') as cookiesfile:
              cookies = pickle.load(cookiesfile)
              for cookie in cookies:
                  self.driver.add_cookie(cookie)
+         logging.info(f"loged in with cookie: {path}")
+
+
+
+
+
+
+
+
+
+
