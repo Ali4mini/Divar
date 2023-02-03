@@ -10,30 +10,30 @@ import time
 import traceback
 import logging
 
-logging.basicConfig(level=logging.INFO, filename="log.log", filemode="w", format="%(asctime)s - %(name)s - %(message)s")
+logging.basicConfig(level=logging.INFO, filename="divar.log", filemode="w", format="%(asctime)s - %(levelname)s - %(name)s - %(message)s")
 
 
 
 class Divar:
 
     def __init__(self, headless=True):
-        logging.info("initializing Divar object")
+
         self.options = Options()
         self.options.headless = headless
         self.driver = webdriver.Firefox(options=self.options)
         self.terms_agreement_done = False
-
+        logging.warning("initialized Divar object")
 
     def __del__(self):
         self.driver.close()
         self.driver.quit()
-        #logging.warning("deleting Divar object")
+        logging.warning("deleting Divar object")
 
-    def __enter__(self):
-        self.__init__()
-
-    def __exit__(self,x,x2,x3):
-        self.__del__()
+    # def __enter__(self):
+    #     self.__init__()
+    #
+    # def __exit__(self,x,x2,x3):
+    #     self.__del__()
 
     def login(self, phone, cookie=None):
         self.driver.get("https://divar.ir/s/tehran")
@@ -50,7 +50,7 @@ class Divar:
             two_FA = self.driver.find_element(By.XPATH, "//input[@class='kt-textfield__input kt-textfield__input--empty']").send_keys(two_FA_input)
             #time.sleep(4)
             #notif_message = self.driver.find_element(By.XPATH, "/html/body/div[1]/div[4]/div/div/div/div[2]/button").click()
-            logging.warning(f"loged in with phone number: {phone}")
+            logging.warning(f"logged in with phone number: {phone}")
 
         else:
             self.load_cookie(cookie)
@@ -61,20 +61,22 @@ class Divar:
 
     def first_post(self,page):
         self.driver.get(page)
-        first = self.driver.find_element(By.XPATH, "/html/body/div[1]/div[1]/main/div[2]/div/div/div[1]/a")
+        self.driver.implicitly_wait(15)
+        first = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/main/div/div/div/div[1]/a")
         return first.get_attribute("href")
         logging.info(f"returned first post of page: {page}")
 
     def all_posts(self,page):
         self.driver.get(page)
-        time.sleep(5)
+        time.sleep(3)
         posts = self.driver.find_elements(By.XPATH, "//a[@class='']")
-        logging.info(f"found all post of page: {page}")
+
         all_posts_links = []
         for i in posts:
             all_posts_links.append(i.get_attribute("href"))
 
-        del all_posts_links[0]
+        #del all_posts_links[0]
+        logging.info(f"found all post of page: {page}")
         return all_posts_links
 
 
@@ -94,6 +96,7 @@ class Divar:
         # finding a post's category and sub categorys
         category_e = self.driver.find_elements(By.CLASS_NAME, "kt-breadcrumbs__link")
         category = [element.text for element in category_e]
+
         logging.info("extracted category")
         main_category = category[-1]
         name = category[0]
@@ -107,6 +110,8 @@ class Divar:
         logging.info("extracting group elements")
 
         titles = group_row_title + base_row_title
+        titles = ["شاخه"] + titles
+
         logging.info("merging base_row_title and group_row_title.")
         ## data usually is in two types "link" and "paragraph"
         try:
@@ -116,16 +121,20 @@ class Divar:
             base_row_value = [e.text for e in base_row_value]
             base_row_value = base_row_value_a_tag + base_row_value
             values = group_row_value + base_row_value
+            values = [category] + values
         except:
 
             base_row_value = self.driver.find_elements(By.XPATH, "//p[@class='kt-unexpandable-row__value']")
             base_row_value = [e.text for e in base_row_value]
             values = group_row_value + base_row_value
+            values = [category] + values
         description = self.driver.find_element(By.XPATH, "//p[@class='kt-description-row__text kt-description-row__text--primary']").text
 
+
         res = dict(zip(titles,values))
-        res["شاخه"] = category
+
         res["توضیحات"] = description
+        ## deleting useless data from result
         try:
             del res["چت"]
         except:
@@ -134,9 +143,17 @@ class Divar:
             del res["آخرین به\u200cروزرسانی آگهی"]
         except:
             pass
-        return res
+        try:
+            del res["سابقهٔ فعالیت در خدمات دیوار"]
+        except:
+            pass
+        if "شماره مخفی شده است" in res:
+            try:
+                res["شماره مخفی شده است"] = None
+            except:
+                pass
         logging.warning(f"done extracting data from {post}")
-
+        return res
 
     def save_cookie(self, path):
         time.sleep(5)
@@ -150,7 +167,7 @@ class Divar:
              cookies = pickle.load(cookiesfile)
              for cookie in cookies:
                  self.driver.add_cookie(cookie)
-         logging.info(f"loged in with cookie: {path}")
+         logging.info(f"logged in with cookie: {path}")
 
 
 
