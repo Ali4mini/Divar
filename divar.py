@@ -83,7 +83,7 @@ class Divar:
     def post_details(self, post):
         logging.info(f"extracting data from '{post}'")
         self.driver.get(post)
-        phone_button = self.driver.find_element(By.XPATH, "/html/body/div/div[1]/div/div[1]/div[1]/div[2]/button[1]").click()
+        phone_button = self.driver.find_element(By.XPATH, "//*[@id='app']/div[2]/div[1]/div[1]/div[2]/div/button[1]").click()
         time.sleep(3)
         logging.warning(f"terms of agreements: {self.terms_agreement_done}")
         if self.terms_agreement_done == False:

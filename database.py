@@ -6,7 +6,7 @@ con = DB.connect("database.db")
 cur = con.cursor()
 
 divar = Divar()
-divar.login("9199328173",cookie="sara.pkl")
+divar.login("9199328173",)
 posts = divar.all_posts("https://divar.ir/s/tehran/buy-apartment/doolab?districts=1017%2C273&user_type=personal")
 posts = posts[:3]
 c = 1
