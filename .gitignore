@@ -1,3 +1,5 @@
 # don't track any log files
 *.log
 __pycache__
+
+.venv/
